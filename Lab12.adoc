@@ -8,7 +8,12 @@
 2. Вывод по интерфейсу UART по прерыванию таймера
 
 == Введение (Прерывания)
-Прерывание таймера позволяет  “выйти” из любого выполняемого на данный момент участка кода в основном цикле, выполнить нужный блок кода, который находится внутри прерывания, и вернуться туда, откуда вышли, и продолжить выполнение.
+Прерывание таймера позволяет:  
+
+* выйти из любого выполняемого на данный момент участка кода в основном цикле;
+
+* выполнить нужный блок кода, который находится внутри прерывания -> вернуться туда, откуда вышли -> продолжить выполнение.
+
 Прерывания могут быть:
 
 1. Асинхронные - могут происходить в любой момент времени.
@@ -33,23 +38,22 @@ UART - протокол, в котором используется только
 
 Связь в UART может быть: 
 
-* симплексной (данные передаются только в одном направлении);
+* симплексной - данные передаются только в одном направлении;
 
-* полудуплексной (каждая сторона осуществляет передачу, но только по очереди);
+* полудуплексной - каждая сторона осуществляет передачу, но только по очереди;
 
-* полнодуплексной (обе стороны могут передавать одновременно). Данные в UART передаются в виде кадров.
+* полнодуплексной - обе стороны могут передавать одновременно). Данные в UART передаются в виде кадров.
 
 == Работа с программой
 
-Строки содержат комментарии, в которых описано, что они делают.
 
-Необходимо добавить в таблицу векторов прерывания 38 строку с вызовом прерывания USART
+D таблицу векторов прерывания l добавить 38 строку с вызовом прерывания USART.
 [source, c++]
   InterruptHandler::Usart2Handler,        //Usart2Handler
 
 Описываем функцию прерывания USART
 [source, c++]
- static void Usart2Handler() // Прерывание USART
+ static void Usart2Handler()
     {
       if (USART2::SR::TXE::Value1::IsSet()) // Проверка на опустошение регистра данных
       {
@@ -57,8 +61,7 @@ UART - протокол, в котором используется только
       }
     }
 
-
-=== MessageTransmitter.cpp
+== MessageTransmitter.cpp
 
 [source, c++]
 #include "messagetransmitter.h"
@@ -68,28 +71,27 @@ void MessageTransmitter::Send(const std::string& message) // Передача с
 if(MesTransmit)
 {
 MesTransmit= false;
-//копирование строки в буфер
 std::copy_n(message.begin(),message.size(),buffer.begin());
 ByteCounter = 0;
 MessageLeight=message.size();
 USART2::DR::Write(buffer[ByteCounter]);
 ByteCounter++;
-  USART2::CR1::TE::Value1::Set();//разрешаем передачу
-  USART2::CR1::TXEIE::Value1::Set();//разрешаем прерывание по опустошению буффера
+  USART2::CR1::TE::Value1::Set();
+  USART2::CR1::TXEIE::Value1::Set();
   }
 }
 void MessageTransmitter::OnByteTransmit()
 {
   if(ByteCounter<= MessageLeight)
   {
-  USART2::DR::Write(buffer[ByteCounter]); // Передача хранящегося байта
+  USART2::DR::Write(buffer[ByteCounter]) // Передача хранящегося байта
   ByteCounter++;
 }
 else
 {
 MesTransmit= true;
-USART2::CR1::TE::Value0::Set();//запрещаем передачу
-USART2::CR1::TXEIE::Value0::Set();//запрещаем прерывание по опустошению буффера
+USART2::CR1::TE::Value0::Set();
+USART2::CR1::TXEIE::Value0::Set();
 }
 }
 
@@ -125,31 +127,31 @@ while (!RCC::CFGR::SWS::Hse::IsSet())
 {
 }
 RCC::AHB1ENR::GPIOAEN::Enable::Set();
-RCC::AHB1ENR::GPIOCEN::Enable::Set(); //Подали тактирование на порт GPIOC
-GPIOC::MODER::MODER8::Output::Set();  //Настроили порт PORTC.8 на выход
-GPIOC::MODER::MODER5::Output::Set();  //Настроили порт PORTC.5 на выход
-//   GPIOC::MODER::MODER9::Output::Set();  //Настроили порт PORTC.9 на выход
-//   GPIOA::MODER::MODER5::Output::Set();  //Настроили порт PORTC.5 на выход
+RCC::AHB1ENR::GPIOCEN::Enable::Set(); 
+GPIOC::MODER::MODER8::Output::Set();  
+GPIOC::MODER::MODER5::Output::Set();
+//   GPIOC::MODER::MODER9::Output::Set();
+//   GPIOA::MODER::MODER5::Output::Set(); 
 RCC::AHB1ENR::GPIOAEN::Enable::Set();
 // Настройка на альтернативный режим
 GPIOA::MODER::MODER2::Alternate::Set();
 GPIOA::MODER::MODER3::Alternate::Set();
-GPIOA::AFRL::AFRL2::Af7::Set(); //Tx usart2
-GPIOA::AFRL::AFRL3::Af7::Set(); //Rx usart2
+GPIOA::AFRL::AFRL2::Af7::Set(); 
+GPIOA::AFRL::AFRL3::Af7::Set(); 
 // настройка таймера
-RCC::APB1ENR::TIM2EN::Enable::Set(); // Подали тактирование
-TIM2::PSC::Write(TimerPrescaller); // Скорость
-TIM2::ARR::Write(1000); // Время прерывания, мс
-TIM2::CNT::Write(0);// Начало отсчета
-NVIC::ISER0::Write(1<<28U); // Разрешить глобальное прерывание TIM2
-TIM2::DIER::UIE::Enable::Set();// Прерывание по переполнению
-TIM2::CR1::CEN::Enable::Set(); // Включение таймера
-RCC::APB1ENR::TIM3EN::Enable::Set();// Подали тактирование
-TIM3::PSC::Write(TimerPrescaller); // Скорость
-TIM3::ARR::Write(500); // Время прерывания, мс
-TIM3::CNT::Write(0); // Начало отсчета
-NVIC::ISER0::Write(1<<29U); // Разрешить глобальное прерывание TIM3
-TIM3::DIER::UIE::Enable::Set(); // Прерывание по переполнению
+RCC::APB1ENR::TIM2EN::Enable::Set(); 
+TIM2::PSC::Write(TimerPrescaller);
+TIM2::ARR::Write(1000);
+TIM2::CNT::Write(0);
+NVIC::ISER0::Write(1<<28U); 
+TIM2::DIER::UIE::Enable::Set();
+TIM2::CR1::CEN::Enable::Set(); 
+RCC::APB1ENR::TIM3EN::Enable::Set();
+TIM3::PSC::Write(TimerPrescaller); 
+TIM3::ARR::Write(500);
+TIM3::CNT::Write(0); 
+NVIC::ISER0::Write(1<<29U); 
+TIM3::DIER::UIE::Enable::Set(); 
 TIM3::CR1::CEN::Value1::Set();
 RCC::APB1ENR::USART2EN::Enable::Set();
 USART2::CR1::OVER8::Value1::Set();
@@ -164,7 +166,7 @@ return 1;
 int main()
 {
 std::string testmes="Hello ";
-MessageTransmitter::Send(testmes); // поссылка сообщения
+MessageTransmitter::Send(testmes);
 for(;;)
 {
 MessageTransmitter::Send(testmes);
